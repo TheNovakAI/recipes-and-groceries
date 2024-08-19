@@ -1,64 +1,64 @@
+import os
 import streamlit as st
 import openai
-import os
+from dotenv import load_dotenv
 
-# Initialize OpenAI client using the API key from Streamlit secrets
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+# Load environment variables from .env file
+load_dotenv()
 
-def get_diet_habits():
-    """Asks the user for their diet preferences."""
-    st.header("Weekly Recipe Generator")
-    st.write("Please answer the following questions about your diet preferences:")
+# Define your OpenAI API key
+api_key = os.getenv('OPENAI_API_KEY')
 
-    diet_type = st.selectbox(
-        "What is your diet type?",
-        ["Omnivore", "Vegetarian", "Vegan", "Keto", "Paleo", "Other"]
-    )
+# Initialize the OpenAI client
+openai.api_key = api_key
 
-    favorite_cuisines = st.text_input(
-        "What are your favorite cuisines? (e.g., Italian, Mexican, Indian)"
-    )
-
-    avoid_ingredients = st.text_input(
-        "Are there any ingredients you want to avoid? (e.g., nuts, dairy, gluten)"
-    )
-
-    return diet_type, favorite_cuisines, avoid_ingredients
-
-def generate_recipes_and_grocery_list(diet_type, favorite_cuisines, avoid_ingredients):
-    """Generates recipes and a grocery list using OpenAI API based on user input."""
-    prompt = f"""
-    You are a helpful AI assistant. Generate a week's worth of recipes and a grocery list based on the following preferences:
-    
-    Diet Type: {diet_type}
-    Favorite Cuisines: {favorite_cuisines}
-    Ingredients to Avoid: {avoid_ingredients}
-    
-    Provide detailed recipes for breakfast, lunch, and dinner for each day, and a consolidated grocery list.
+# Function to generate recipes and grocery list
+def generate_recipes_and_grocery_list(diet_preference, meals_per_day, ingredients_to_avoid):
+    system_prompt = """
+    You are an AI chef assistant. Based on the user's dietary preferences, meals per day, and ingredients they want to avoid, generate a weekly meal plan with recipes and provide a grocery list.
     """
 
-    response = openai.Completion.create(
-        engine="text-davinci-003",
-        prompt=prompt,
-        max_tokens=1500,
-        n=1,
-        stop=None,
-        temperature=0.7,
-    )
+    user_prompt = f"""
+    The user prefers a {diet_preference} diet, wants {meals_per_day} meals per day, and wants to avoid the following ingredients: {ingredients_to_avoid}.
+    Please generate a meal plan for one week, including recipes for each meal, and a grocery list with quantities.
+    """
 
-    recipes_and_grocery_list = response.choices[0].text.strip()
-    return recipes_and_grocery_list
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            max_tokens=1500
+        )
+        return response.choices[0].message['content']
+    except Exception as e:
+        return f"An error occurred: {e}"
 
-def main():
-    diet_type, favorite_cuisines, avoid_ingredients = get_diet_habits()
+# Streamlit UI
+st.title("Weekly Meal Planner and Grocery List Generator")
 
-    if st.button("Generate Weekly Recipes and Grocery List"):
-        with st.spinner("Generating recipes and grocery list..."):
-            recipes_and_grocery_list = generate_recipes_and_grocery_list(
-                diet_type, favorite_cuisines, avoid_ingredients
-            )
-            st.success("Here are your recipes and grocery list for the week:")
-            st.text_area("Recipes and Grocery List", value=recipes_and_grocery_list, height=400)
+st.write("Answer the following questions to generate your weekly meal plan and grocery list.")
 
-if __name__ == "__main__":
-    main()
+diet_preference = st.selectbox(
+    "What's your dietary preference?",
+    ["Vegetarian", "Vegan", "Keto", "Paleo", "Standard"]
+)
+
+meals_per_day = st.slider(
+    "How many meals do you want per day?",
+    1, 5, 3
+)
+
+ingredients_to_avoid = st.text_input(
+    "Any ingredients you want to avoid?"
+)
+
+if st.button("Generate Meal Plan and Grocery List"):
+    if not api_key:
+        st.error("API key not found. Please add your OpenAI API key in the .env file.")
+    else:
+        st.write("Generating your meal plan and grocery list...")
+        response = generate_recipes_and_grocery_list(diet_preference, meals_per_day, ingredients_to_avoid)
+        st.text_area("Your Weekly Meal Plan and Grocery List", response, height=400)
