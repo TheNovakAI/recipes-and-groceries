@@ -59,4 +59,4 @@ if st.button("Generate Meal Plan and Grocery List"):
     if isinstance(response, str):  # If there's an error message
         st.error(response)
     else:
-        st.text_area("Your Weekly Meal Plan and Grocery List", response.choices[0].message.content, height=400)
+        st.markdown(response.choices[0].message.content)
