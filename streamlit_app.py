@@ -1,13 +1,8 @@
-import os
 import streamlit as st
 import openai
-from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
-
-# Define your OpenAI API key
-api_key = os.getenv('OPENAI_API_KEY')
+# Load API key from Streamlit secrets
+api_key = st.secrets["openai_api_key"]
 
 # Initialize the OpenAI client
 openai.api_key = api_key
@@ -25,12 +20,12 @@ def generate_recipes_and_grocery_list(diet_preference, meals_per_day, ingredient
 
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-4",
+            model="gpt-4o",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            max_tokens=1500
+            max_tokens=4000
         )
         return response.choices[0].message['content']
     except Exception as e:
@@ -56,9 +51,6 @@ ingredients_to_avoid = st.text_input(
 )
 
 if st.button("Generate Meal Plan and Grocery List"):
-    if not api_key:
-        st.error("API key not found. Please add your OpenAI API key in the .env file.")
-    else:
-        st.write("Generating your meal plan and grocery list...")
-        response = generate_recipes_and_grocery_list(diet_preference, meals_per_day, ingredients_to_avoid)
-        st.text_area("Your Weekly Meal Plan and Grocery List", response, height=400)
+    st.write("Generating your meal plan and grocery list...")
+    response = generate_recipes_and_grocery_list(diet_preference, meals_per_day, ingredients_to_avoid)
+    st.text_area("Your Weekly Meal Plan and Grocery List", response, height=400)
