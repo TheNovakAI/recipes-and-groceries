@@ -1,25 +1,19 @@
 import streamlit as st
-import openai
+from openai import OpenAI
+import os
 
-# Load API key from Streamlit secrets
+# Load the OpenAI API key from Streamlit secrets
 api_key = st.secrets["openai_api_key"]
+organization = st.secrets.get("openai_organization", None)  # Optional
+project = st.secrets.get("openai_project", None)  # Optional
 
 # Initialize the OpenAI client
-openai.api_key = api_key
+client = OpenAI(api_key=api_key, organization=organization, project=project)
 
-# Function to generate recipes and grocery list
-def generate_recipes_and_grocery_list(diet_preference, meals_per_day, ingredients_to_avoid):
-    system_prompt = """
-    You are an AI chef assistant. Based on the user's dietary preferences, meals per day, and ingredients they want to avoid, generate a weekly meal plan with recipes and provide a grocery list.
-    """
-
-    user_prompt = f"""
-    The user prefers a {diet_preference} diet, wants {meals_per_day} meals per day, and wants to avoid the following ingredients: {ingredients_to_avoid}.
-    Please generate a meal plan for one week, including recipes for each meal, and a grocery list with quantities.
-    """
-
+def create_chat_completion(system_prompt, user_prompt):
+    """Creates a chat completion using OpenAI's API."""
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -27,7 +21,7 @@ def generate_recipes_and_grocery_list(diet_preference, meals_per_day, ingredient
             ],
             max_tokens=4000
         )
-        return response.choices[0].message['content']
+        return response
     except Exception as e:
         return f"An error occurred: {e}"
 
@@ -51,6 +45,18 @@ ingredients_to_avoid = st.text_input(
 )
 
 if st.button("Generate Meal Plan and Grocery List"):
-    st.write("Generating your meal plan and grocery list...")
-    response = generate_recipes_and_grocery_list(diet_preference, meals_per_day, ingredients_to_avoid)
-    st.text_area("Your Weekly Meal Plan and Grocery List", response, height=400)
+    system_prompt = """
+    You are an AI chef assistant. Based on the user's dietary preferences, meals per day, and ingredients they want to avoid, generate a weekly meal plan with recipes and provide a grocery list.
+    """
+
+    user_prompt = f"""
+    The user prefers a {diet_preference} diet, wants {meals_per_day} meals per day, and wants to avoid the following ingredients: {ingredients_to_avoid}.
+    Please generate a meal plan for one week, including recipes for each meal, and a grocery list with quantities.
+    """
+
+    response = create_chat_completion(system_prompt, user_prompt)
+
+    if isinstance(response, str):  # If there's an error message
+        st.error(response)
+    else:
+        st.text_area("Your Weekly Meal Plan and Grocery List", response.choices[0].message.content, height=400)
